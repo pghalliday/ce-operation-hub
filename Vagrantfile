@@ -27,7 +27,7 @@ Vagrant.configure("2") do |config|
     node.vm.provision :chef_solo do |chef|
       chef.json = {
         "ce_operation_hub" => {
-          "installDirectory" => "/vagrant"
+          "destination" => "/vagrant"
         }
       }
       chef.run_list = [
