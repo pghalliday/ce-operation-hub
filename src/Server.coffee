@@ -1,19 +1,45 @@
-http = require 'http'
 zmq = require 'zmq'
 
 module.exports = class Server
   constructor: (@options) ->
-    @ceFrontEnd = zmq.socket 'xrep'
-    @ceFrontEnd.on 'message', =>
+    @currentId = 0
+    @ceFrontEndXReply = zmq.socket 'xrep'
+    @ceEnginePublisher = zmq.socket 'pub'
+    @ceEnginePull = zmq.socket 'pull'
+    @ceFrontEndXReply.on 'message', =>
       args = Array.apply null, arguments
       order = JSON.parse args[2]
-      order.id = '654321'
-      args[2] = JSON.stringify order
-      @ceFrontEnd.send args
+      id = @currentId++
+      order.id = id
+      replyHandler = (message) =>
+        order = JSON.parse message
+        if order.id == id
+          @ceEnginePull.removeListener 'message', replyHandler
+          args[2] = JSON.stringify order
+          @ceFrontEndXReply.send args
+      @ceEnginePull.on 'message', replyHandler
+      @ceEnginePublisher.send JSON.stringify order
 
   stop: (callback) =>
-    @ceFrontEnd.close()
+    @ceFrontEndXReply.close()
+    @ceEnginePublisher.close()
+    @ceEnginePull.close()
     callback()
 
   start: (callback) =>
-    @ceFrontEnd.bind @options.bindAddress, callback
+    @ceFrontEndXReply.bind @options.ceFrontEndXReply, (error) =>
+      if error
+        callback error
+      else
+        @ceEnginePublisher.bind @options.ceEnginePublisher, (error) =>
+          if error
+            @ceFrontEndXReply.close()
+            callback error
+          else
+            @ceEnginePull.bind @options.ceEnginePull, (error) =>
+              if error
+                @ceFrontEndXReply.close()
+                @ceEnginePublisher.close()
+                callback error
+              else
+                callback()

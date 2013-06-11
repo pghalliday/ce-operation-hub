@@ -10,7 +10,9 @@ describe 'Server', ->
   describe '#stop', ->
     it 'should not error if the server has not been started', (done) ->
       server = new Server
-        bindAddress: 'tcp://127.0.0.1:4000'
+        ceFrontEndXReply: 'tcp://*:8000'
+        ceEnginePublisher: 'tcp://*:8001'
+        ceEnginePull: 'tcp://*:8002'
       server.stop (error) ->
         expect(error).to.not.be.ok
         done()
@@ -18,16 +20,58 @@ describe 'Server', ->
   describe '#start', ->
     it 'should start and be stoppable', (done) ->
       server = new Server
-        bindAddress: 'tcp://127.0.0.1:8000'
+        ceFrontEndXReply: 'tcp://*:8000'
+        ceEnginePublisher: 'tcp://*:8001'
+        ceEnginePull: 'tcp://*:8002'
       server.start (error) ->
         expect(error).to.not.be.ok
         server.stop (error) ->
           expect(error).to.not.be.ok
           done()
 
+    it 'should error if it cannot bind to ceFrontEndXReply address', (done) ->
+      server = new Server
+        ceFrontEndXReply: 'tcp://invalid:8000'
+        ceEnginePublisher: 'tcp://*:8001'
+        ceEnginePull: 'tcp://*:8002'
+      server.start (error) ->
+        error.message.should.equal 'No such device'
+        done()
+
+    it 'should error if it cannot bind to ceEnginePublisher address', (done) ->
+      server = new Server
+        ceFrontEndXReply: 'tcp://*:8000'
+        ceEnginePublisher: 'tcp://invalid:8001'
+        ceEnginePull: 'tcp://*:8002'
+      server.start (error) ->
+        error.message.should.equal 'No such device'
+        done()
+
+    it 'should error if it cannot bind to ceEnginePull address', (done) ->
+      server = new Server
+        ceFrontEndXReply: 'tcp://*:8000'
+        ceEnginePublisher: 'tcp://*:8001'
+        ceEnginePull: 'tcp://invalid:8002'
+      server.start (error) ->
+        error.message.should.equal 'No such device'
+        done()
+
   describe 'when started', ->
     beforeEach (done) ->
-      @ceFrontEnd = zmq.socket 'xreq'
+      @ceFrontEndXRequest = zmq.socket 'xreq'
+      @ceEngineSubscriber = zmq.socket 'sub'
+      @ceEnginePush = zmq.socket 'push'
+      @ceEngineSubscriber.subscribe ''
+      @ceEngineSubscriber.on 'message', (message) =>
+        order = JSON.parse message
+        order.bidCurrency.should.equal 'EUR'
+        order.offerCurrency.should.equal 'BTC'
+        order.bidPrice.should.equal '100'
+        order.bidAmount.should.equal '50'
+        order.account.should.equal 'Peter'
+        order.id.should.equal 0
+        order.engineTest = 'this is a test'
+        @ceEnginePush.send JSON.stringify order
       @order =
         account: 'Peter'
         bidCurrency: 'EUR'
@@ -35,16 +79,23 @@ describe 'Server', ->
         bidPrice: '100'
         bidAmount: '50'        
       @server = new Server
-        bindAddress: 'tcp://127.0.0.1:8000'
-      @server.start done
+        ceFrontEndXReply: 'tcp://*:8000'
+        ceEnginePublisher: 'tcp://*:8001'
+        ceEnginePull: 'tcp://*:8002'
+      @server.start (error) =>
+        @ceFrontEndXRequest.connect 'tcp://localhost:8000'
+        @ceEngineSubscriber.connect 'tcp://localhost:8001'
+        @ceEnginePush.connect 'tcp://localhost:8002'
+        done()
 
     afterEach (done) ->
-      @ceFrontEnd.close()
+      @ceFrontEndXRequest.close()
+      @ceEngineSubscriber.close()
+      @ceEnginePush.close()
       @server.stop done
 
-    it 'should add an ID to submitted orders', (done) ->
-      @ceFrontEnd.connect 'tcp://127.0.0.1:8000'
-      @ceFrontEnd.on 'message', =>
+    it 'should add an ID to submitted orders and publish them to the ce-engine instances', (done) ->
+      @ceFrontEndXRequest.on 'message', =>
         args = Array.apply null, arguments
         args[0].toString().should.equal '123456'
         order = JSON.parse args[1]
@@ -53,6 +104,7 @@ describe 'Server', ->
         order.bidPrice.should.equal '100'
         order.bidAmount.should.equal '50'
         order.account.should.equal 'Peter'
-        order.id.should.equal '654321'
+        order.id.should.equal 0
+        order.engineTest.should.equal 'this is a test'
         done()
-      @ceFrontEnd.send ['123456', JSON.stringify @order]
+      @ceFrontEndXRequest.send ['123456', JSON.stringify @order]

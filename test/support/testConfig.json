@@ -1,3 +1,5 @@
 {
-  "bind-address": "tcp://127.0.0.1:4002"
+  "ce-front-end-xreply": "tcp://*:6000",
+  "ce-engine-publisher": "tcp://*:6001",
+  "ce-engine-pull": "tcp://*:6002"
 }
