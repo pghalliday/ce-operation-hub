@@ -4,8 +4,11 @@ module.exports = class Server
   constructor: (@options) ->
     @currentId = 0
     @ceFrontEndXReply = zmq.socket 'xrep'
+    @ceFrontEndXReply.setsockopt 'linger', 0
     @ceEnginePublisher = zmq.socket 'pub'
+    @ceEnginePublisher.setsockopt 'linger', 0
     @ceEnginePull = zmq.socket 'pull'
+    @ceEnginePull.setsockopt 'linger', 0
     @ceFrontEndXReply.on 'message', =>
       args = Array.apply null, arguments
       order = JSON.parse args[2]
