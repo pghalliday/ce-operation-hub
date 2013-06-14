@@ -1,5 +1,7 @@
 {
-  "ce-front-end-xreply": "tcp://*:6000",
-  "ce-engine-publisher": "tcp://*:6001",
-  "ce-engine-pull": "tcp://*:6002"
+  "ce-front-end": 7000,
+  "ce-engine": {
+    "stream": 7001,
+    "result": 7002
+  }
 }

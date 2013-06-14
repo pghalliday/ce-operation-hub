@@ -3,13 +3,14 @@ zmq = require 'zmq'
 module.exports = class Server
   constructor: (@options) ->
     @currentId = 0
-    @ceFrontEndXReply = zmq.socket 'xrep'
-    @ceFrontEndXReply.setsockopt 'linger', 0
-    @ceEnginePublisher = zmq.socket 'pub'
-    @ceEnginePublisher.setsockopt 'linger', 0
-    @ceEnginePull = zmq.socket 'pull'
-    @ceEnginePull.setsockopt 'linger', 0
-    @ceFrontEndXReply.on 'message', =>
+    @ceFrontEnd = zmq.socket 'xrep'
+    @ceFrontEnd.setsockopt 'linger', 0
+    @ceEngine = 
+      stream: zmq.socket 'pub'
+      result: zmq.socket 'pull'
+    @ceEngine.stream.setsockopt 'linger', 0
+    @ceEngine.result.setsockopt 'linger', 0
+    @ceFrontEnd.on 'message', =>
       args = Array.apply null, arguments
       order = JSON.parse args[2]
       id = @currentId++
@@ -17,32 +18,32 @@ module.exports = class Server
       replyHandler = (message) =>
         order = JSON.parse message
         if order.id == id
-          @ceEnginePull.removeListener 'message', replyHandler
+          @ceEngine.result.removeListener 'message', replyHandler
           args[2] = JSON.stringify order
-          @ceFrontEndXReply.send args
-      @ceEnginePull.on 'message', replyHandler
-      @ceEnginePublisher.send JSON.stringify order
+          @ceFrontEnd.send args
+      @ceEngine.result.on 'message', replyHandler
+      @ceEngine.stream.send JSON.stringify order
 
   stop: (callback) =>
-    @ceFrontEndXReply.close()
-    @ceEnginePublisher.close()
-    @ceEnginePull.close()
+    @ceFrontEnd.close()
+    @ceEngine.stream.close()
+    @ceEngine.result.close()
     callback()
 
   start: (callback) =>
-    @ceFrontEndXReply.bind @options.ceFrontEndXReply, (error) =>
+    @ceFrontEnd.bind 'tcp://*:' + @options['ce-front-end'], (error) =>
       if error
         callback error
       else
-        @ceEnginePublisher.bind @options.ceEnginePublisher, (error) =>
+        @ceEngine.stream.bind 'tcp://*:' + @options['ce-engine'].stream, (error) =>
           if error
-            @ceFrontEndXReply.close()
+            @ceFrontEnd.close()
             callback error
           else
-            @ceEnginePull.bind @options.ceEnginePull, (error) =>
+            @ceEngine.result.bind 'tcp://*:' + @options['ce-engine'].result, (error) =>
               if error
-                @ceFrontEndXReply.close()
-                @ceEnginePublisher.close()
+                @ceFrontEnd.close()
+                @ceEngine.stream.close()
                 callback error
               else
                 callback()

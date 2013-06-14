@@ -5,14 +5,16 @@ expect = chai.expect
 Server = require '../../src/Server'
 
 zmq = require 'zmq'
+ports = require '../support/ports'
 
 describe 'Server', ->
   describe '#stop', ->
     it 'should not error if the server has not been started', (done) ->
       server = new Server
-        ceFrontEndXReply: 'tcp://*:8000'
-        ceEnginePublisher: 'tcp://*:8001'
-        ceEnginePull: 'tcp://*:8002'
+        'ce-front-end': ports()
+        'ce-engine':
+          stream: ports()
+          result: ports()
       server.stop (error) ->
         expect(error).to.not.be.ok
         done()
@@ -20,49 +22,54 @@ describe 'Server', ->
   describe '#start', ->
     it 'should start and be stoppable', (done) ->
       server = new Server
-        ceFrontEndXReply: 'tcp://*:8000'
-        ceEnginePublisher: 'tcp://*:8001'
-        ceEnginePull: 'tcp://*:8002'
+        'ce-front-end': ports()
+        'ce-engine':
+          stream: ports()
+          result: ports()
       server.start (error) ->
         expect(error).to.not.be.ok
         server.stop (error) ->
           expect(error).to.not.be.ok
           done()
 
-    it 'should error if it cannot bind to ceFrontEndXReply address', (done) ->
+    it 'should error if it cannot bind to the ce-front-end address', (done) ->
       server = new Server
-        ceFrontEndXReply: 'tcp://invalid:8000'
-        ceEnginePublisher: 'tcp://*:8001'
-        ceEnginePull: 'tcp://*:8002'
+        'ce-front-end': 'invalid'
+        'ce-engine':
+          stream: ports()
+          result: ports()
       server.start (error) ->
-        error.message.should.equal 'No such device'
+        error.message.should.equal 'Invalid argument'
         done()
 
-    it 'should error if it cannot bind to ceEnginePublisher address', (done) ->
+    it 'should error if it cannot bind to the ce-engine stream port', (done) ->
       server = new Server
-        ceFrontEndXReply: 'tcp://*:8000'
-        ceEnginePublisher: 'tcp://invalid:8001'
-        ceEnginePull: 'tcp://*:8002'
+        'ce-front-end': ports()
+        'ce-engine':
+          stream: 'invalid'
+          result: ports()
       server.start (error) ->
-        error.message.should.equal 'No such device'
+        error.message.should.equal 'Invalid argument'
         done()
 
-    it 'should error if it cannot bind to ceEnginePull address', (done) ->
+    it 'should error if it cannot bind to the ce-engine result port', (done) ->
       server = new Server
-        ceFrontEndXReply: 'tcp://*:8000'
-        ceEnginePublisher: 'tcp://*:8001'
-        ceEnginePull: 'tcp://invalid:8002'
+        'ce-front-end': ports()
+        'ce-engine':
+          stream: ports()
+          result: 'invalid'
       server.start (error) ->
-        error.message.should.equal 'No such device'
+        error.message.should.equal 'Invalid argument'
         done()
 
   describe 'when started', ->
     beforeEach (done) ->
-      @ceFrontEndXRequest = zmq.socket 'xreq'
-      @ceEngineSubscriber = zmq.socket 'sub'
-      @ceEnginePush = zmq.socket 'push'
-      @ceEngineSubscriber.subscribe ''
-      @ceEngineSubscriber.on 'message', (message) =>
+      @ceFrontEnd = zmq.socket 'xreq'
+      @ceEngine = 
+        stream: zmq.socket 'sub'
+        result: zmq.socket 'push'
+      @ceEngine.stream.subscribe ''
+      @ceEngine.stream.on 'message', (message) =>
         order = JSON.parse message
         order.bidCurrency.should.equal 'EUR'
         order.offerCurrency.should.equal 'BTC'
@@ -71,31 +78,35 @@ describe 'Server', ->
         order.account.should.equal 'Peter'
         order.id.should.equal 0
         order.engineTest = 'this is a test'
-        @ceEnginePush.send JSON.stringify order
+        @ceEngine.result.send JSON.stringify order
       @order =
         account: 'Peter'
         bidCurrency: 'EUR'
         offerCurrency: 'BTC'
         bidPrice: '100'
-        bidAmount: '50'        
+        bidAmount: '50'
+      ceFrontEndPort = ports()
+      ceEngineStreamPort = ports()
+      ceEngineResultPort = ports()
       @server = new Server
-        ceFrontEndXReply: 'tcp://*:8000'
-        ceEnginePublisher: 'tcp://*:8001'
-        ceEnginePull: 'tcp://*:8002'
+        'ce-front-end': ceFrontEndPort
+        'ce-engine':
+          stream: ceEngineStreamPort
+          result: ceEngineResultPort
       @server.start (error) =>
-        @ceFrontEndXRequest.connect 'tcp://localhost:8000'
-        @ceEngineSubscriber.connect 'tcp://localhost:8001'
-        @ceEnginePush.connect 'tcp://localhost:8002'
+        @ceFrontEnd.connect 'tcp://localhost:' + ceFrontEndPort
+        @ceEngine.stream.connect 'tcp://localhost:' + ceEngineStreamPort
+        @ceEngine.result.connect 'tcp://localhost:' + ceEngineResultPort
         done()
 
     afterEach (done) ->
-      @ceFrontEndXRequest.close()
-      @ceEngineSubscriber.close()
-      @ceEnginePush.close()
+      @ceFrontEnd.close()
+      @ceEngine.stream.close()
+      @ceEngine.result.close()
       @server.stop done
 
     it 'should add an ID to submitted orders and publish them to the ce-engine instances', (done) ->
-      @ceFrontEndXRequest.on 'message', =>
+      @ceFrontEnd.on 'message', =>
         args = Array.apply null, arguments
         args[0].toString().should.equal '123456'
         order = JSON.parse args[1]
@@ -107,4 +118,8 @@ describe 'Server', ->
         order.id.should.equal 0
         order.engineTest.should.equal 'this is a test'
         done()
-      @ceFrontEndXRequest.send ['123456', JSON.stringify @order]
+      @ceFrontEnd.send ['123456', JSON.stringify @order]
+
+    it.skip 'should timeout if no ce-engine instance responds within the configured timeout period', (done) ->
+      # TODO
+      done()
