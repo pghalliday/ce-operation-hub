@@ -14,21 +14,23 @@ describe 'ce-operation-hub', ->
       result: zmq.socket 'push'
     ceEngine.stream.subscribe ''
     ceEngine.stream.on 'message', (message) =>
-      order = JSON.parse message
+      operation = JSON.parse message
+      operation.account.should.equal 'Peter'
+      operation.id.should.equal 0
+      order = operation.order
       order.bidCurrency.should.equal 'EUR'
       order.offerCurrency.should.equal 'BTC'
       order.bidPrice.should.equal '100'
       order.bidAmount.should.equal '50'
-      order.account.should.equal 'Peter'
-      order.id.should.equal 0
-      order.engineTest = 'this is a test'
-      ceEngine.result.send JSON.stringify order
-    order =
+      operation.result = 'success'
+      ceEngine.result.send JSON.stringify operation
+    operation =
       account: 'Peter'
-      bidCurrency: 'EUR'
-      offerCurrency: 'BTC'
-      bidPrice: '100'
-      bidAmount: '50'        
+      order:
+        bidCurrency: 'EUR'
+        offerCurrency: 'BTC'
+        bidPrice: '100'
+        bidAmount: '50'
     childDaemon = new ChildDaemon 'node', [
       'lib/src/index.js',
       '--config',
@@ -39,13 +41,21 @@ describe 'ce-operation-hub', ->
       ceFrontEnd.connect 'tcp://localhost:7000'
       ceEngine.stream.connect 'tcp://localhost:7001'
       ceEngine.result.connect 'tcp://localhost:7002'
-      ceFrontEnd.on 'message', =>
-        args = Array.apply null, arguments
-        args[0].toString().should.equal '123456'
+      ceFrontEnd.on 'message', (ref, message) =>
+        ref.toString().should.equal '123456'
+        operation = JSON.parse message
+        operation.account.should.equal 'Peter'
+        operation.id.should.equal 0
+        operation.result.should.equal 'success'
+        order = operation.order
+        order.bidCurrency.should.equal 'EUR'
+        order.offerCurrency.should.equal 'BTC'
+        order.bidPrice.should.equal '100'
+        order.bidAmount.should.equal '50'
         childDaemon.stop (error) =>
           expect(error).to.not.be.ok
           ceFrontEnd.close()
           ceEngine.stream.close()
           ceEngine.result.close()
           done()
-      ceFrontEnd.send ['123456', JSON.stringify order]
+      ceFrontEnd.send ['123456', JSON.stringify operation]

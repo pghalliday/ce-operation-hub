@@ -10,19 +10,17 @@ module.exports = class Server
       result: zmq.socket 'pull'
     @ceEngine.stream.setsockopt 'linger', 0
     @ceEngine.result.setsockopt 'linger', 0
-    @ceFrontEnd.on 'message', =>
-      args = Array.apply null, arguments
-      order = JSON.parse args[2]
+    @ceFrontEnd.on 'message', (ref, frontEndRef, message) =>
+      operation = JSON.parse message
       id = @currentId++
-      order.id = id
+      operation.id = id
       replyHandler = (message) =>
-        order = JSON.parse message
-        if order.id == id
+        operation = JSON.parse message
+        if operation.id == id
           @ceEngine.result.removeListener 'message', replyHandler
-          args[2] = JSON.stringify order
-          @ceFrontEnd.send args
+          @ceFrontEnd.send [ref, frontEndRef, JSON.stringify operation]
       @ceEngine.result.on 'message', replyHandler
-      @ceEngine.stream.send JSON.stringify order
+      @ceEngine.stream.send JSON.stringify operation
 
   stop: (callback) =>
     @ceFrontEnd.close()
