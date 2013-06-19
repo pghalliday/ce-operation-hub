@@ -1,5 +1,7 @@
 {
-  "ce-front-end": 7000,
+  "ce-front-end": {
+    "submit": 7000
+  },
   "ce-engine": {
     "stream": 7001,
     "result": 7002

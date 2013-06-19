@@ -29,7 +29,7 @@ module.exports = class Server
     callback()
 
   start: (callback) =>
-    @ceFrontEnd.bind 'tcp://*:' + @options['ce-front-end'], (error) =>
+    @ceFrontEnd.bind 'tcp://*:' + @options['ce-front-end'].submit, (error) =>
       if error
         callback error
       else

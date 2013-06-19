@@ -11,7 +11,8 @@ describe 'Server', ->
   describe '#stop', ->
     it 'should not error if the server has not been started', (done) ->
       server = new Server
-        'ce-front-end': ports()
+        'ce-front-end':
+          submit: ports()
         'ce-engine':
           stream: ports()
           result: ports()
@@ -22,7 +23,8 @@ describe 'Server', ->
   describe '#start', ->
     it 'should start and be stoppable', (done) ->
       server = new Server
-        'ce-front-end': ports()
+        'ce-front-end':
+          submit: ports()
         'ce-engine':
           stream: ports()
           result: ports()
@@ -34,7 +36,8 @@ describe 'Server', ->
 
     it 'should error if it cannot bind to the ce-front-end address', (done) ->
       server = new Server
-        'ce-front-end': 'invalid'
+        'ce-front-end':
+          submit: 'invalid'
         'ce-engine':
           stream: ports()
           result: ports()
@@ -44,7 +47,8 @@ describe 'Server', ->
 
     it 'should error if it cannot bind to the ce-engine stream port', (done) ->
       server = new Server
-        'ce-front-end': ports()
+        'ce-front-end':
+          submit: ports()
         'ce-engine':
           stream: 'invalid'
           result: ports()
@@ -54,7 +58,8 @@ describe 'Server', ->
 
     it 'should error if it cannot bind to the ce-engine result port', (done) ->
       server = new Server
-        'ce-front-end': ports()
+        'ce-front-end':
+          submit: ports()
         'ce-engine':
           stream: ports()
           result: 'invalid'
@@ -91,7 +96,8 @@ describe 'Server', ->
       ceEngineStreamPort = ports()
       ceEngineResultPort = ports()
       @server = new Server
-        'ce-front-end': ceFrontEndPort
+        'ce-front-end':
+          submit: ceFrontEndPort
         'ce-engine':
           stream: ceEngineStreamPort
           result: ceEngineResultPort
