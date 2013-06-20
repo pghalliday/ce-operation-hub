@@ -10,17 +10,34 @@ module.exports = class Server
       result: zmq.socket 'pull'
     @ceEngine.stream.setsockopt 'linger', 0
     @ceEngine.result.setsockopt 'linger', 0
-    @ceFrontEnd.on 'message', (ref, frontEndRef, message) =>
-      operation = JSON.parse message
-      id = @currentId++
-      operation.id = id
-      replyHandler = (message) =>
+    @ceFrontEnd.on 'message', (ref, message) =>
+      isMessageInvalid = false
+      try
         operation = JSON.parse message
-        if operation.id == id
+      catch
+        isMessageInvalid = true
+      if isMessageInvalid
+        operation = 
+          result: 'error: invalid request data'
+        @ceFrontEnd.send [ref, JSON.stringify operation]
+      else
+        id = @currentId++
+        operation.id = id
+        replyHandler = (message) =>
+          operation = JSON.parse message
+          if operation.id == id
+            clearTimeout timeout
+            @ceEngine.result.removeListener 'message', replyHandler
+            @ceFrontEnd.send [ref, JSON.stringify operation]
+        @ceEngine.result.on 'message', replyHandler
+        @ceEngine.stream.send JSON.stringify operation
+        timeout = setTimeout =>
           @ceEngine.result.removeListener 'message', replyHandler
-          @ceFrontEnd.send [ref, frontEndRef, JSON.stringify operation]
-      @ceEngine.result.on 'message', replyHandler
-      @ceEngine.stream.send JSON.stringify operation
+          operation.result = 'pending'
+          @ceFrontEnd.send [ref, JSON.stringify operation]
+        , @options['ce-engine'].timeout
+
+
 
   stop: (callback) =>
     @ceFrontEnd.close()

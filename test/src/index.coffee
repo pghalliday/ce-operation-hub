@@ -11,22 +11,25 @@ describe 'ce-operation-hub', ->
     ceFrontEnd = zmq.socket 'xreq'
     ceEngine =
       stream: zmq.socket 'sub'
+      history: zmq.socket 'xreq'
       result: zmq.socket 'push'
     ceEngine.stream.subscribe ''
     ceEngine.stream.on 'message', (message) =>
       operation = JSON.parse message
+      operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
       operation.account.should.equal 'Peter'
       operation.id.should.equal 0
-      order = operation.order
-      order.bidCurrency.should.equal 'EUR'
-      order.offerCurrency.should.equal 'BTC'
-      order.bidPrice.should.equal '100'
-      order.bidAmount.should.equal '50'
+      submit = operation.submit
+      submit.bidCurrency.should.equal 'EUR'
+      submit.offerCurrency.should.equal 'BTC'
+      submit.bidPrice.should.equal '100'
+      submit.bidAmount.should.equal '50'
       operation.result = 'success'
       ceEngine.result.send JSON.stringify operation
     operation =
+      reference: '550e8400-e29b-41d4-a716-446655440000'
       account: 'Peter'
-      order:
+      submit:
         bidCurrency: 'EUR'
         offerCurrency: 'BTC'
         bidPrice: '100'
@@ -40,22 +43,24 @@ describe 'ce-operation-hub', ->
       expect(error).to.not.be.ok
       ceFrontEnd.connect 'tcp://localhost:7000'
       ceEngine.stream.connect 'tcp://localhost:7001'
-      ceEngine.result.connect 'tcp://localhost:7002'
-      ceFrontEnd.on 'message', (ref, message) =>
-        ref.toString().should.equal '123456'
+      ceEngine.history.connect 'tcp://localhost:7002'
+      ceEngine.result.connect 'tcp://localhost:7003'
+      ceFrontEnd.on 'message', (message) =>
         operation = JSON.parse message
+        operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.equal 0
         operation.result.should.equal 'success'
-        order = operation.order
-        order.bidCurrency.should.equal 'EUR'
-        order.offerCurrency.should.equal 'BTC'
-        order.bidPrice.should.equal '100'
-        order.bidAmount.should.equal '50'
+        submit = operation.submit
+        submit.bidCurrency.should.equal 'EUR'
+        submit.offerCurrency.should.equal 'BTC'
+        submit.bidPrice.should.equal '100'
+        submit.bidAmount.should.equal '50'
         childDaemon.stop (error) =>
           expect(error).to.not.be.ok
           ceFrontEnd.close()
           ceEngine.stream.close()
+          ceEngine.history.close()
           ceEngine.result.close()
           done()
-      ceFrontEnd.send ['123456', JSON.stringify operation]
+      ceFrontEnd.send [JSON.stringify operation]

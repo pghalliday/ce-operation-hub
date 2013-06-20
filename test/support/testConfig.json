@@ -4,6 +4,8 @@
   },
   "ce-engine": {
     "stream": 7001,
-    "result": 7002
+    "history": 7002,
+    "result": 7003,
+    "timeout": 2000
   }
 }
