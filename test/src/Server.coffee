@@ -104,6 +104,8 @@ describe 'Server', ->
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.be.a 'number'
+        operation.timestamp.should.be.at.least @startTime
+        operation.timestamp.should.be.at.most Date.now()
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
         submit.offerCurrency.should.equal 'BTC'
@@ -148,12 +150,15 @@ describe 'Server', ->
       @ceEngine.result.close()
       @server.stop done
 
-    it 'should add an ID to submitted operations and publish them to the ce-engine instances', (done) ->
+    it 'should add an ID and timestamp to submitted operations and publish them to the ce-engine instances', (done) ->
+      @startTime = Date.now()
       @ceFrontEnd.on 'message', (message) =>
         operation = JSON.parse message
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.equal 0
+        operation.timestamp.should.be.at.least @startTime
+        operation.timestamp.should.be.at.most Date.now()
         operation.result.should.equal 'success'
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
@@ -172,11 +177,14 @@ describe 'Server', ->
 
     it 'should timeout and respond with a pending result if no ce-engine instance responds within the configured timeout period', (done) ->
       @ceEngineDelay = 500
+      @startTime = Date.now()
       @ceFrontEnd.on 'message', (message) =>
         operation = JSON.parse message
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.equal 0
+        operation.timestamp.should.be.at.least @startTime
+        operation.timestamp.should.be.at.most Date.now()
         operation.result.should.equal 'pending'
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
@@ -229,6 +237,7 @@ describe 'Server', ->
       @ceFrontEnd.send JSON.stringify @operation
 
     it 'should respond with a list of the last operations when requested with a start id for the list', (done) ->
+      @startTime = Date.now()
       @ceEngine.history.on 'message', (message) =>
         response = JSON.parse message
         response.should.have.length 2
@@ -236,6 +245,8 @@ describe 'Server', ->
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.equal 0
+        operation.timestamp.should.be.at.least @startTime
+        operation.timestamp.should.be.at.most Date.now()
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
         submit.offerCurrency.should.equal 'BTC'
@@ -245,6 +256,8 @@ describe 'Server', ->
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.equal 1
+        operation.timestamp.should.be.at.least @startTime
+        operation.timestamp.should.be.at.most Date.now()
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
         submit.offerCurrency.should.equal 'BTC'

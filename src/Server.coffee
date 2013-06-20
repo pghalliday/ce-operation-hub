@@ -26,6 +26,7 @@ module.exports = class Server
       else
         id = @currentId++
         operation.id = id
+        operation.timestamp = Date.now()
         @history.push operation
         replyHandler = (message) =>
           operation = JSON.parse message

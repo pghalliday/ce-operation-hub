@@ -8,6 +8,7 @@ zmq = require 'zmq'
 describe 'ce-operation-hub', ->
   it 'should take parameters from a file', (done) ->
     this.timeout 5000
+    startTime = Date()
     ceFrontEnd = zmq.socket 'xreq'
     ceEngine =
       stream: zmq.socket 'sub'
@@ -19,6 +20,8 @@ describe 'ce-operation-hub', ->
       operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
       operation.account.should.equal 'Peter'
       operation.id.should.equal 0
+      operation.timestamp.should.be.at.least @startTime
+      operation.timestamp.should.be.at.most Date.now()
       submit = operation.submit
       submit.bidCurrency.should.equal 'EUR'
       submit.offerCurrency.should.equal 'BTC'
@@ -50,6 +53,8 @@ describe 'ce-operation-hub', ->
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
         operation.id.should.equal 0
+        operation.timestamp.should.be.at.least @startTime
+        operation.timestamp.should.be.at.most Date.now()
         operation.result.should.equal 'success'
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
