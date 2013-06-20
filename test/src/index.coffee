@@ -19,7 +19,7 @@ describe 'ce-operation-hub', ->
       operation = JSON.parse message
       operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
       operation.account.should.equal 'Peter'
-      operation.id.should.equal 0
+      operation.sequence.should.equal 0
       operation.timestamp.should.be.at.least @startTime
       operation.timestamp.should.be.at.most Date.now()
       submit = operation.submit
@@ -52,7 +52,7 @@ describe 'ce-operation-hub', ->
         operation = JSON.parse message
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
-        operation.id.should.equal 0
+        operation.sequence.should.equal 0
         operation.timestamp.should.be.at.least @startTime
         operation.timestamp.should.be.at.most Date.now()
         operation.result.should.equal 'success'

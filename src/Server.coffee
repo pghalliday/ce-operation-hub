@@ -2,7 +2,7 @@ zmq = require 'zmq'
 
 module.exports = class Server
   constructor: (@options) ->
-    @currentId = 0
+    @currentSequence = 0
     @history = []
     @ceFrontEnd = zmq.socket 'xrep'
     @ceFrontEnd.setsockopt 'linger', 0
@@ -24,13 +24,13 @@ module.exports = class Server
           result: 'error: invalid request data'
         @ceFrontEnd.send [ref, JSON.stringify operation]
       else
-        id = @currentId++
-        operation.id = id
+        sequence = @currentSequence++
+        operation.sequence = sequence
         operation.timestamp = Date.now()
         @history.push operation
         replyHandler = (message) =>
           operation = JSON.parse message
-          if operation.id == id
+          if operation.sequence == sequence
             clearTimeout timeout
             @ceEngine.result.removeListener 'message', replyHandler
             @ceFrontEnd.send [ref, JSON.stringify operation]
@@ -44,19 +44,19 @@ module.exports = class Server
     @ceEngine.history.on 'message', (ref, message) =>
       isMessageInvalid = false
       try
-        startId = JSON.parse message
+        startSequence = JSON.parse message
       catch
         isMessageInvalid = true
       if isMessageInvalid
         response = 'error: invalid request data'
         @ceEngine.history.send [ref, JSON.stringify response]
       else
-        if typeof startId == 'number'
-          if startId > @currentId 
+        if typeof startSequence == 'number'
+          if startSequence > @currentSequence 
             response = 'error: start ID must be the next ID or earlier'
             @ceEngine.history.send [ref, JSON.stringify response]
           else
-            response = @history.slice startId
+            response = @history.slice startSequence
             @ceEngine.history.send [ref, JSON.stringify response]
         else
           response = 'error: invalid start ID'
