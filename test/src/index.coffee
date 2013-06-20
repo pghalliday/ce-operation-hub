@@ -9,10 +9,10 @@ describe 'ce-operation-hub', ->
   it 'should take parameters from a file', (done) ->
     this.timeout 5000
     startTime = Date()
-    ceFrontEnd = zmq.socket 'xreq'
+    ceFrontEnd = zmq.socket 'dealer'
     ceEngine =
       stream: zmq.socket 'sub'
-      history: zmq.socket 'xreq'
+      history: zmq.socket 'dealer'
       result: zmq.socket 'push'
     ceEngine.stream.subscribe ''
     ceEngine.stream.on 'message', (message) =>

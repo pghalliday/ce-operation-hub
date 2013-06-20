@@ -4,11 +4,11 @@ module.exports = class Server
   constructor: (@options) ->
     @currentSequence = 0
     @history = []
-    @ceFrontEnd = zmq.socket 'xrep'
+    @ceFrontEnd = zmq.socket 'router'
     @ceFrontEnd.setsockopt 'linger', 0
     @ceEngine = 
       stream: zmq.socket 'pub'
-      history: zmq.socket 'xrep'
+      history: zmq.socket 'router'
       result: zmq.socket 'pull'
     @ceEngine.stream.setsockopt 'linger', 0
     @ceEngine.history.setsockopt 'linger', 0

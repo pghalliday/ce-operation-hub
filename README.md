@@ -14,7 +14,7 @@ configuration should be placed in a file called `config.json` in the root of the
 {
   // Listens for operations submitted by `ce-front-end` instances
   "ce-front-end": {
-    // Port for 0MQ `xrep` socket
+    // Port for 0MQ `router` socket
     "submit": 7000
   },
   // Streams and provides a history of operations to and listens
@@ -22,7 +22,7 @@ configuration should be placed in a file called `config.json` in the root of the
   "ce-engine": {
     // Port for 0MQ `pub` socket
     "stream": 7001,
-    // Port for 0MQ 'xrep' socket
+    // Port for 0MQ 'router' socket
     "history": 7002,
     // Port for 0MQ `pull` socket
     "result": 7003,
@@ -51,7 +51,7 @@ Output will be logged to the following files
 
 ### Submit an operation
 
-`ce-front-end` instances should connect a 0MQ `xreq` socket to the configured `ce-front-end/submit` port and submit operations over that
+`ce-front-end` instances should connect a 0MQ `dealer` socket to the configured `ce-front-end/submit` port and submit operations over that
 
 Request:
 
@@ -130,7 +130,7 @@ The `ce-engine` instances should then push the result in the following format
 
 ### Get the history of operations
 
-`ce-engine` instances should connect a 0MQ `xreq` socket to the configured `ce-engine/history` port
+`ce-engine` instances should connect a 0MQ `dealer` socket to the configured `ce-engine/history` port
 
 When requesting the history of operations, a `ce-engine` instance should supply the next operation ID it is expecting and operations will be returned from that ID onwards
 
