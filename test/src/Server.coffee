@@ -64,7 +64,7 @@ describe 'Server', ->
         error.message.should.equal 'Invalid argument'
         done()
 
-    it.skip 'should error if it cannot bind to the ce-engine history port', (done) ->
+    it 'should error if it cannot bind to the ce-engine history port', (done) ->
       server = new Server
         'ce-front-end':
           submit: ports()
@@ -96,13 +96,14 @@ describe 'Server', ->
       @ceFrontEnd = zmq.socket 'xreq'
       @ceEngine = 
         stream: zmq.socket 'sub'
+        history: zmq.socket 'xreq'
         result: zmq.socket 'push'
       @ceEngine.stream.subscribe ''
       @ceEngine.stream.on 'message', (message) =>
         operation = JSON.parse message
         operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
         operation.account.should.equal 'Peter'
-        operation.id.should.equal 0
+        operation.id.should.be.a 'number'
         submit = operation.submit
         submit.bidCurrency.should.equal 'EUR'
         submit.offerCurrency.should.equal 'BTC'
@@ -135,6 +136,7 @@ describe 'Server', ->
       @server.start (error) =>
         @ceFrontEnd.connect 'tcp://localhost:' + ceFrontEndPort
         @ceEngine.stream.connect 'tcp://localhost:' + ceEngineStreamPort
+        @ceEngine.history.connect 'tcp://localhost:' + ceEngineHistoryPort
         @ceEngine.result.connect 'tcp://localhost:' + ceEngineResultPort
         done()
 
@@ -142,6 +144,7 @@ describe 'Server', ->
       clearTimeout @ceEngineTimeout
       @ceFrontEnd.close()
       @ceEngine.stream.close()
+      @ceEngine.history.close()
       @ceEngine.result.close()
       @server.stop done
 
@@ -181,4 +184,78 @@ describe 'Server', ->
         submit.bidPrice.should.equal '100'
         submit.bidAmount.should.equal '50'
         done()
+      @ceFrontEnd.send JSON.stringify @operation
+
+    it 'should respond with an error when the history is requested with an unparsable start id for the list', (done) ->
+      @ceEngine.history.on 'message', (message) =>
+        response = JSON.parse message
+        response.should.equal 'error: invalid request data'
+        done()
+      @ceEngine.history.send ''
+
+    it 'should respond with an error when the history is requested with an invalid start ID for the list', (done) ->
+      @ceEngine.history.on 'message', (message) =>
+        response = JSON.parse message
+        response.should.equal 'error: invalid start ID'
+        done()
+      @ceEngine.history.send '"hello"'
+
+    it 'should respond with an error when the history is requested with a start ID that is not next or earlier', (done) ->
+      @ceEngine.history.on 'message', (message) =>
+        response = JSON.parse message
+        response.should.equal 'error: start ID must be the next ID or earlier'
+        done()
+      secondOperation = (message) =>
+        @ceEngine.history.send '3'
+      firstOperation = (message) =>
+        @ceFrontEnd.removeListener 'message', firstOperation
+        @ceFrontEnd.on 'message', secondOperation
+        @ceFrontEnd.send JSON.stringify @operation
+      @ceFrontEnd.on 'message', firstOperation
+      @ceFrontEnd.send JSON.stringify @operation
+
+    it 'should respond with an empty list when the history is requested with a start ID that is next', (done) ->
+      @ceEngine.history.on 'message', (message) =>
+        response = JSON.parse message
+        response.should.deep.equal []
+        done()
+      secondOperation = (message) =>
+        @ceEngine.history.send '2'
+      firstOperation = (message) =>
+        @ceFrontEnd.removeListener 'message', firstOperation
+        @ceFrontEnd.on 'message', secondOperation
+        @ceFrontEnd.send JSON.stringify @operation
+      @ceFrontEnd.on 'message', firstOperation
+      @ceFrontEnd.send JSON.stringify @operation
+
+    it 'should respond with a list of the last operations when requested with a start id for the list', (done) ->
+      @ceEngine.history.on 'message', (message) =>
+        response = JSON.parse message
+        response.should.have.length 2
+        operation = response[0]
+        operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
+        operation.account.should.equal 'Peter'
+        operation.id.should.equal 0
+        submit = operation.submit
+        submit.bidCurrency.should.equal 'EUR'
+        submit.offerCurrency.should.equal 'BTC'
+        submit.bidPrice.should.equal '100'
+        submit.bidAmount.should.equal '50'
+        operation = response[1]
+        operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
+        operation.account.should.equal 'Peter'
+        operation.id.should.equal 1
+        submit = operation.submit
+        submit.bidCurrency.should.equal 'EUR'
+        submit.offerCurrency.should.equal 'BTC'
+        submit.bidPrice.should.equal '100'
+        submit.bidAmount.should.equal '50'
+        done()
+      secondOperation = (message) =>
+        @ceEngine.history.send '0'
+      firstOperation = (message) =>
+        @ceFrontEnd.removeListener 'message', firstOperation
+        @ceFrontEnd.on 'message', secondOperation
+        @ceFrontEnd.send JSON.stringify @operation
+      @ceFrontEnd.on 'message', firstOperation
       @ceFrontEnd.send JSON.stringify @operation

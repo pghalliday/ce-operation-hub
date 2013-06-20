@@ -3,12 +3,15 @@ zmq = require 'zmq'
 module.exports = class Server
   constructor: (@options) ->
     @currentId = 0
+    @history = []
     @ceFrontEnd = zmq.socket 'xrep'
     @ceFrontEnd.setsockopt 'linger', 0
     @ceEngine = 
       stream: zmq.socket 'pub'
+      history: zmq.socket 'xrep'
       result: zmq.socket 'pull'
     @ceEngine.stream.setsockopt 'linger', 0
+    @ceEngine.history.setsockopt 'linger', 0
     @ceEngine.result.setsockopt 'linger', 0
     @ceFrontEnd.on 'message', (ref, message) =>
       isMessageInvalid = false
@@ -23,6 +26,7 @@ module.exports = class Server
       else
         id = @currentId++
         operation.id = id
+        @history.push operation
         replyHandler = (message) =>
           operation = JSON.parse message
           if operation.id == id
@@ -36,12 +40,31 @@ module.exports = class Server
           operation.result = 'pending'
           @ceFrontEnd.send [ref, JSON.stringify operation]
         , @options['ce-engine'].timeout
-
-
+    @ceEngine.history.on 'message', (ref, message) =>
+      isMessageInvalid = false
+      try
+        startId = JSON.parse message
+      catch
+        isMessageInvalid = true
+      if isMessageInvalid
+        response = 'error: invalid request data'
+        @ceEngine.history.send [ref, JSON.stringify response]
+      else
+        if typeof startId == 'number'
+          if startId > @currentId 
+            response = 'error: start ID must be the next ID or earlier'
+            @ceEngine.history.send [ref, JSON.stringify response]
+          else
+            response = @history.slice startId
+            @ceEngine.history.send [ref, JSON.stringify response]
+        else
+          response = 'error: invalid start ID'
+          @ceEngine.history.send [ref, JSON.stringify response]
 
   stop: (callback) =>
     @ceFrontEnd.close()
     @ceEngine.stream.close()
+    @ceEngine.history.close()
     @ceEngine.result.close()
     callback()
 
@@ -55,10 +78,17 @@ module.exports = class Server
             @ceFrontEnd.close()
             callback error
           else
-            @ceEngine.result.bind 'tcp://*:' + @options['ce-engine'].result, (error) =>
+            @ceEngine.history.bind 'tcp://*:' + @options['ce-engine'].history, (error) =>
               if error
                 @ceFrontEnd.close()
                 @ceEngine.stream.close()
                 callback error
               else
-                callback()
+                @ceEngine.result.bind 'tcp://*:' + @options['ce-engine'].result, (error) =>
+                  if error
+                    @ceFrontEnd.close()
+                    @ceEngine.stream.close()
+                    @ceEngine.history.close()
+                    callback error
+                  else
+                    callback()
