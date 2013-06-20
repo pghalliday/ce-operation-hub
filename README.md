@@ -73,8 +73,8 @@ Reply:
 {
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567890",
-  "timestamp": "1371721763",
+  "sequence": 1234567890,
+  "timestamp": 1371737390976,
   "result": "[result]",
   "[operation]": {
     ...
@@ -99,14 +99,14 @@ If the request data cannot be parsed by the `ce-operation-hub` the following rep
 
 `ce-engine` instances should connect a 0MQ `sub` socket to the configured `ce-engine/stream` port and a 0MQ `push` socket to the configured `ce-engine/result` port
 
-Submitted operations will be assigned a sequential ID and timestamp as a unix time and streamed to the `ce-engine` instances in the following format
+Submitted operations will be assigned a `sequence` number and timestamp as a unix time in milliseconds since epoch and streamed to the `ce-engine` instances in the following format
 
 ```javascript
 {
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567890",
-  "timestamp": "1371721763",
+  "sequence": 1234567890,
+  "timestamp": 1371737390976,
   "[operation]": {
     ...
   }
@@ -119,8 +119,8 @@ The `ce-engine` instances should then push the result in the following format
 {
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567890",
-  "timestamp": "1371721763",
+  "sequence": 1234567890,
+  "timestamp": 1371737390976,
   "result": "[result]",
   "[operation]": {
     ...
@@ -137,7 +137,7 @@ When requesting the history of operations, a `ce-engine` instance should supply 
 Request:
 
 ```javacscript
-"1234567890"
+1234567890
 ```
 
 Reply:
@@ -146,32 +146,32 @@ Reply:
 [{
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567890",
-  "timestamp": "1371721763",
+  "sequence": 1234567890,
+  "timestamp": 1371737390976,
   "[operation]": {
     ...
   }
 }, {
   "reference": "550e8401-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567891",
-  "timestamp": "1371721770",
+  "sequence": 1234567891,
+  "timestamp": 1371737390980,
   "[operation]": {
     ...
   }
 }, {
   "reference": "550e8402-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567892",
-  "timestamp": "1371721787",
+  "sequence": 1234567892,
+  "timestamp": 1371737390998,
   "[operation]": {
     ...
   }
 }, {
   "reference": "550e8403-e29b-41d4-a716-446655440000",
   "account": "[account]",
-  "id": "1234567893",
-  "timestamp": "1371721845",
+  "sequence": 1234567893,
+  "timestamp": 1371737391005,
   "[operation]": {
     ...
   }
@@ -182,8 +182,6 @@ Note that the `ce-engine` instance should push the results back to the `ce-opera
 
 ## Roadmap
 
-- Should maintain a history of operations
-- Should allow a `ce-engine` instance to catch up with operations from the history that it has not yet applied (after connection failure or reboot, for instance)
 - Should persist the history of operations (external database?)
 
 ## Contributing
