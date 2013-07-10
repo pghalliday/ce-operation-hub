@@ -71,27 +71,61 @@ Reply:
 
 ```javascript
 {
-  "reference": "550e8400-e29b-41d4-a716-446655440000",
-  "account": "[account]",
-  "sequence": 1234567890,
-  "timestamp": 1371737390976,
-  "result": "[result]",
-  "[operation]": {
+  operation: {
+    "reference": "550e8400-e29b-41d4-a716-446655440000",
+    "account": "[account]",
+    "sequence": 1234567890,
+    "timestamp": 1371737390976,
+    "result": "[result]",
+    "[operation]": {
+      ...
+    }
+  },
+  delta: {
+    // Delta returned from the ce-engine
     ...
   }
 }
-```
 
-Possible results include
+// OR
 
-- `[ce-engine result]` - the result pushed by a `ce-engine` instance
-- `pending` - the operation was not processed by a `ce-engine` instance within the configured timeout period. In this case the operation may still be applied at some point and will have been added to the operation history. A `ce-front-end` instance could only know if the operation is eventually applied by watching for deltas from a `ce-delta-hub`
-
-If the request data cannot be parsed by the `ce-operation-hub` the following reply will be sent:
-
-```javascript
 {
-  "result": "error: invalid request data",
+  operation: {
+    "reference": "550e8400-e29b-41d4-a716-446655440000",
+    "account": "[account]",
+    "sequence": 1234567890,
+    "timestamp": 1371737390976,
+    "result": "[result]",
+    "[operation]": {
+      ...
+    }
+  },
+  // An error was encountered and the operation
+  // was not applied to the market although it will still
+  // be added to the operation history as long as the operation
+  // itself was successfully parsed
+  error: '[error message]'
+}
+
+// OR
+
+{
+  operation: {
+    "reference": "550e8400-e29b-41d4-a716-446655440000",
+    "account": "[account]",
+    "sequence": 1234567890,
+    "timestamp": 1371737390976,
+    "result": "[result]",
+    "[operation]": {
+      ...
+    }
+  },
+  // the operation was not processed by a `ce-engine` instance within the configured
+  // timeout period. In this case the operation may still be applied at some point 
+  // and will have been added to the operation history. A `ce-front-end` instance could
+  // only know if the operation is eventually applied by watching for deltas from a
+  // `ce-delta-hub`
+  pending: true
 }
 ```
 
@@ -113,16 +147,17 @@ Submitted operations will be assigned a `sequence` number and timestamp as a uni
 }
 ```
 
-The `ce-engine` instances should then push the result in the following format
+The `ce-engine` instances should then push the resulting delta back to the `ce-operation-hub`
 
 ```javascript
 {
-  "reference": "550e8400-e29b-41d4-a716-446655440000",
-  "account": "[account]",
-  "sequence": 1234567890,
-  "timestamp": 1371737390976,
-  "result": "[result]",
-  "[operation]": {
+  sequence: 4565478613,
+  operation: {
+    // supplied operation data
+    ...
+  },
+  result: {
+    // result information
     ...
   }
 }

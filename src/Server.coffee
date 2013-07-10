@@ -1,4 +1,6 @@
 zmq = require 'zmq'
+Operation = require('currency-market').Operation
+Delta = require('currency-market').Delta
 
 module.exports = class Server
   constructor: (@options) ->
@@ -14,52 +16,54 @@ module.exports = class Server
     @ceEngine.history.setsockopt 'linger', 0
     @ceEngine.result.setsockopt 'linger', 0
     @ceFrontEnd.on 'message', (ref, message) =>
-      isMessageInvalid = false
+      response =
+        operation: message.toString()
       try
-        operation = JSON.parse message
-      catch
-        isMessageInvalid = true
-      if isMessageInvalid
-        operation = 
-          result: 'error: invalid request data'
-        @ceFrontEnd.send [ref, JSON.stringify operation]
+        response.operation = new Operation
+          json: message
+      catch error
+        response.error = error.toString()
+      if response.error
+        @ceFrontEnd.send [ref, JSON.stringify response]
       else
         sequence = @currentSequence++
-        operation.sequence = sequence
-        operation.timestamp = Date.now()
-        @history.push operation
+        response.operation.accept
+          sequence: sequence
+          timestamp: Date.now()
+        @history.push response.operation
         replyHandler = (message) =>
-          operation = JSON.parse message
-          if operation.sequence == sequence
+          response.delta = new Delta
+            json: message
+          if response.delta.operation.sequence == sequence
             clearTimeout timeout
             @ceEngine.result.removeListener 'message', replyHandler
-            @ceFrontEnd.send [ref, JSON.stringify operation]
+            @ceFrontEnd.send [ref, JSON.stringify response]
         @ceEngine.result.on 'message', replyHandler
-        @ceEngine.stream.send JSON.stringify operation
+        @ceEngine.stream.send JSON.stringify response.operation
         timeout = setTimeout =>
           @ceEngine.result.removeListener 'message', replyHandler
-          operation.result = 'pending'
-          @ceFrontEnd.send [ref, JSON.stringify operation]
+          response.pending = true
+          @ceFrontEnd.send [ref, JSON.stringify response]
         , @options['ce-engine'].timeout
     @ceEngine.history.on 'message', (ref, message) =>
-      isMessageInvalid = false
+      response =
+        from: message.toString()
       try
-        startSequence = JSON.parse message
-      catch
-        isMessageInvalid = true
-      if isMessageInvalid
-        response = 'error: invalid request data'
+        response.from = JSON.parse message
+      catch error
+        response.error = error.toString()
+      if response.error
         @ceEngine.history.send [ref, JSON.stringify response]
       else
-        if typeof startSequence == 'number'
-          if startSequence > @currentSequence 
-            response = 'error: start ID must be the next ID or earlier'
+        if typeof response.from == 'number'
+          if response.from > @currentSequence 
+            response.error = (new Error 'start ID must be the next ID or earlier').toString()
             @ceEngine.history.send [ref, JSON.stringify response]
           else
-            response = @history.slice startSequence
+            response.history = @history.slice response.from
             @ceEngine.history.send [ref, JSON.stringify response]
         else
-          response = 'error: invalid start ID'
+          response.error = (new Error 'invalid start ID').toString()
           @ceEngine.history.send [ref, JSON.stringify response]
 
   stop: (callback) =>
