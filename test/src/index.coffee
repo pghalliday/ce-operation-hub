@@ -41,7 +41,10 @@ describe 'ce-operation-hub', ->
       deposit = operation.deposit
       deposit.currency.should.equal 'BTC'
       deposit.amount.compareTo(new Amount '5000').should.equal 0
-      ceEngine.result.send JSON.stringify engine.apply operation
+      response =
+        operation: operation
+        delta: engine.apply operation
+      ceEngine.result.send JSON.stringify response
     operation = new Operation
       reference: '550e8400-e29b-41d4-a716-446655440000'
       account: 'Peter'

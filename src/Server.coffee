@@ -32,8 +32,9 @@ module.exports = class Server
           timestamp: Date.now()
         @history.push response.operation
         replyHandler = (message) =>
+          engineResponse = JSON.parse message
           response.delta = new Delta
-            json: message
+            exported: engineResponse.delta
           if response.delta.operation.sequence == sequence
             clearTimeout timeout
             @ceEngine.result.removeListener 'message', replyHandler

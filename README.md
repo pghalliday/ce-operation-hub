@@ -151,15 +151,24 @@ The `ce-engine` instances should then push the resulting delta back to the `ce-o
 
 ```javascript
 {
-  sequence: 4565478613,
   operation: {
-    // supplied operation data
+    // supplied operation
     ...
   },
-  result: {
-    // result information
+  delta: {
+    // delta
     ...
   }
+}
+
+// OR
+
+{
+  operation: {
+    // supplied operation
+    ...
+  },
+  error: "[Error]"
 }
 ```
 
@@ -171,13 +180,13 @@ When requesting the history of operations, a `ce-engine` instance should supply 
 
 Request:
 
-```javacscript
+```javascript
 1234567890
 ```
 
 Reply:
 
-```javacscript
+```javascript
 [{
   "reference": "550e8400-e29b-41d4-a716-446655440000",
   "account": "[account]",
