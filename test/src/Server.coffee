@@ -117,18 +117,13 @@ describe 'Server', ->
       @ceEngine.stream.on 'message', (message) =>
         operation = new Operation
           json: message
-        operation.reference.should.equal '550e8400-e29b-41d4-a716-446655440000'
-        operation.account.should.equal 'Peter'
-        operation.sequence.should.be.a 'number'
-        operation.timestamp.should.be.at.least @startTime
-        operation.timestamp.should.be.at.most Date.now()
-        deposit = operation.deposit
-        deposit.currency.should.equal 'BTC'
-        deposit.amount.compareTo(new Amount '5000').should.equal 0
         @ceEngineTimeout = setTimeout =>
           response =
             operation: operation
-            delta: @engine.apply operation
+          try
+            response.delta = @engine.apply operation
+          catch error
+            response.error = error.toString()
           @ceEngine.result.send JSON.stringify response
         , @ceEngineDelay
       @operation = new Operation
@@ -137,6 +132,14 @@ describe 'Server', ->
         deposit:
           currency: 'BTC'
           amount: new Amount '5000'
+      @submitOperation = new Operation
+        reference: '550e8400-e29b-41d4-a716-446655440000'
+        account: 'Peter'
+        submit:
+          bidCurrency: 'BTC'
+          offerCurrency: 'EUR'
+          bidPrice: new Amount '100'
+          bidAmount: new Amount '50'
       ceFrontEndPort = ports()
       ceEngineStreamPort = ports()
       ceEngineHistoryPort = ports()
@@ -201,6 +204,16 @@ describe 'Server', ->
         response.error.should.equal 'SyntaxError: Unexpected token i'
         done()
       @ceFrontEnd.send 'invalid JSON'
+
+    it 'should respond with an error if the submitted operation cannot be applied by the engine', (done) ->
+      @ceFrontEnd.on 'message', (message) =>
+        response = JSON.parse message
+        operation = new Operation
+          exported: response.operation
+        operation.reference.should.equal @submitOperation.reference
+        response.error.should.equal 'Error: Cannot lock funds that are not available'
+        done()
+      @ceFrontEnd.send JSON.stringify @submitOperation
 
     it 'should timeout and respond with a pending result if no ce-engine instance responds within the configured timeout period', (done) ->
       @ceEngineDelay = 500

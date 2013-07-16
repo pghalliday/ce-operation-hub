@@ -33,12 +33,18 @@ module.exports = class Server
         @history.push response.operation
         replyHandler = (message) =>
           engineResponse = JSON.parse message
-          response.delta = new Delta
-            exported: engineResponse.delta
-          if response.delta.operation.sequence == sequence
-            clearTimeout timeout
-            @ceEngine.result.removeListener 'message', replyHandler
-            @ceFrontEnd.send [ref, JSON.stringify response]
+          operation = engineResponse.operation
+          if operation
+            if operation.sequence == sequence
+              clearTimeout timeout
+              delta = engineResponse.delta
+              if delta
+                response.delta = new Delta
+                  exported: delta
+              else
+                response.error = engineResponse.error
+              @ceEngine.result.removeListener 'message', replyHandler
+              @ceFrontEnd.send [ref, JSON.stringify response]
         @ceEngine.result.on 'message', replyHandler
         @ceEngine.stream.send JSON.stringify response.operation
         timeout = setTimeout =>
