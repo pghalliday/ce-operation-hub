@@ -7,14 +7,10 @@ module.exports = class Server
     @currentSequence = 0
     @history = []
     @ceFrontEnd = zmq.socket 'router'
-    @ceFrontEnd.setsockopt 'linger', 0
     @ceEngine = 
       stream: zmq.socket 'pub'
       history: zmq.socket 'router'
       result: zmq.socket 'pull'
-    @ceEngine.stream.setsockopt 'linger', 0
-    @ceEngine.history.setsockopt 'linger', 0
-    @ceEngine.result.setsockopt 'linger', 0
     @ceFrontEnd.on 'message', (ref, message) =>
       response =
         operation: message.toString()
